@@ -1,29 +1,29 @@
 [
   {
     "model":"lstm",
-    "mae":522.299,
-    "rmse":671.781,
-    "mape":2.205,
-    "pinball_10":118.7,
-    "pinball_90":131.801,
-    "coverage_80":0.771
-  },
-  {
-    "model":"seasonal_naive",
-    "mae":774.455,
-    "rmse":978.66,
-    "mape":3.177,
-    "pinball_10":187.236,
-    "pinball_90":165.673,
-    "coverage_80":0.715
+    "mae":1067.588,
+    "rmse":1298.743,
+    "mape":3.738,
+    "pinball_10":400.601,
+    "pinball_90":226.863,
+    "coverage_80":0.465
   },
   {
     "model":"lightgbm",
-    "mae":805.642,
-    "rmse":1015.629,
-    "mape":3.266,
-    "pinball_10":304.22,
-    "pinball_90":149.993,
-    "coverage_80":0.444
+    "mae":1463.467,
+    "rmse":1863.618,
+    "mape":4.97,
+    "pinball_10":796.202,
+    "pinball_90":423.124,
+    "coverage_80":0.208
+  },
+  {
+    "model":"seasonal_naive",
+    "mae":3072.528,
+    "rmse":3391.605,
+    "mape":10.546,
+    "pinball_10":674.87,
+    "pinball_90":526.767,
+    "coverage_80":0.722
   }
 ]
