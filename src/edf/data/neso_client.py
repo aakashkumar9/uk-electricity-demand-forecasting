@@ -39,11 +39,22 @@ def _ckan_get(action: str, **params) -> dict:
 
 def discover_csv_resources(query: str | None = None) -> list[dict]:
     """Search the NESO CKAN portal for historic-demand-data packages and return
-    the list of CSV resource dicts (with 'url', 'name', 'format')."""
+    the list of CSV resource dicts (with 'url', 'name', 'format').
+
+    CKAN's full-text package_search matches on more than the package title, so
+    a query like "historic demand data" also pulls back unrelated datasets
+    (e.g. "Historic Frequency Data") that happen to share those words. Each
+    wasted resource costs a full HTTP download + CSV parse attempt, so we
+    filter to packages whose title actually mentions "demand" and explicitly
+    excludes "frequency" before ever fetching a resource.
+    """
     query = query or settings.neso_package_query
     result = _ckan_get("package_search", q=query, rows=50)
     resources: list[dict] = []
     for pkg in result.get("results", []):
+        title = str(pkg.get("title", "")).lower()
+        if "demand" not in title or "frequency" in title:
+            continue
         for res in pkg.get("resources", []):
             if str(res.get("format", "")).upper() == "CSV":
                 resources.append(res)

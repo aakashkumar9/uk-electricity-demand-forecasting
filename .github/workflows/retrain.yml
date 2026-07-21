@@ -52,10 +52,22 @@ jobs:
           git add artifacts/
           if git diff --cached --quiet; then
             echo "No artifact changes to commit"
-          else
-            git commit -m "chore: scheduled retrain $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            git push origin HEAD:${{ github.ref_name }}
+            exit 0
           fi
+          git commit -m "chore: scheduled retrain $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          # A long-running training job can be outrun by another push to the
+          # same branch (e.g. a manual artifacts commit); rebase and retry
+          # rather than clobbering whatever landed on main meanwhile.
+          for attempt in 1 2 3; do
+            if git push origin HEAD:${{ github.ref_name }}; then
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt), rebasing onto origin/${{ github.ref_name }} and retrying..."
+            git fetch origin ${{ github.ref_name }}
+            git rebase origin/${{ github.ref_name }}
+          done
+          echo "::error::Failed to push updated artifacts after 3 attempts"
+          exit 1
 
       - name: Upload backtest report as workflow artifact
         uses: actions/upload-artifact@v4

@@ -3,12 +3,16 @@ model comparison table from the rolling-origin backtest.
 
 Tries the FastAPI service first (set EDF_API_URL, defaults to
 http://localhost:8000); falls back to reading the training pipeline's local
-artifacts directly so the dashboard also works standalone.
+artifacts directly (and running inference in-process) so the dashboard also
+works standalone with no separate API process — e.g. on Streamlit Community
+Cloud, which only runs this one script and has nowhere to run a second
+`uvicorn` process alongside it.
 """
 from __future__ import annotations
 
 import json
 import os
+import pickle
 import sys
 from pathlib import Path
 
@@ -21,6 +25,44 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from edf.config import MODELS_DIR, REPORTS_DIR  # noqa: E402
 
 API_URL = os.environ.get("EDF_API_URL", "http://localhost:8000")
+
+
+@st.cache_resource
+def _load_local_model(model_name: str):
+    path = MODELS_DIR / f"{model_name}.pkl"
+    if not path.exists():
+        return None
+    with open(path, "rb") as f:
+        return pickle.load(f)
+
+
+@st.cache_resource
+def _load_local_context() -> pd.DataFrame | None:
+    path = MODELS_DIR / "latest_context.parquet"
+    return pd.read_parquet(path) if path.exists() else None
+
+
+def get_forecast(model_name: str, horizon: int) -> pd.DataFrame:
+    """Try the FastAPI service; fall back to running the pickled model
+    in-process against the locally-committed context if the API isn't
+    reachable (no separate server needed)."""
+    try:
+        resp = requests.get(f"{API_URL}/forecast", params={"model": model_name, "horizon": horizon}, timeout=3)
+        resp.raise_for_status()
+        df = pd.DataFrame(resp.json()["points"])
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        return df
+    except Exception:
+        model = _load_local_model(model_name)
+        context = _load_local_context()
+        if model is None or context is None:
+            raise RuntimeError(
+                f"No API reachable at {API_URL} and no local model artifact for {model_name!r} "
+                "in artifacts/models/ — run the training pipeline first."
+            )
+        preds = model.predict(context, horizon)
+        df = preds.reset_index().rename(columns={"index": "timestamp"})
+        return df
 
 st.set_page_config(page_title="UK Energy Demand Forecast", layout="wide")
 st.title("UK Energy Demand Forecasting")
@@ -97,16 +139,13 @@ else:
     fig.update_layout(height=500, yaxis_title="Demand (MW)", legend=dict(orientation="h", y=1.05))
     st.plotly_chart(fig, use_container_width=True)
 
-st.subheader("Live forecast from the serving API")
+st.subheader("Live forecast")
+st.caption(f"Tries the API at {API_URL} first, falls back to running the trained model directly if it's unreachable.")
 horizon = st.slider("Horizon (half-hour steps)", min_value=6, max_value=96, value=48, step=6)
 model_for_api = st.selectbox("Model to query", ["lightgbm", "lstm", "seasonal_naive"], key="api_model")
-if st.button("Request forecast from API"):
+if st.button("Request forecast"):
     try:
-        resp = requests.get(f"{API_URL}/forecast", params={"model": model_for_api, "horizon": horizon}, timeout=10)
-        resp.raise_for_status()
-        payload = resp.json()
-        df_live = pd.DataFrame(payload["points"])
-        df_live["timestamp"] = pd.to_datetime(df_live["timestamp"])
+        df_live = get_forecast(model_for_api, horizon)
         fig2 = go.Figure()
         fig2.add_trace(go.Scatter(x=df_live["timestamp"], y=df_live["p90"], line=dict(width=0), showlegend=False))
         fig2.add_trace(go.Scatter(x=df_live["timestamp"], y=df_live["p10"], fill="tonexty", line=dict(width=0), name="P10-P90"))
@@ -114,4 +153,4 @@ if st.button("Request forecast from API"):
         fig2.update_layout(height=400, yaxis_title="Demand (MW)")
         st.plotly_chart(fig2, use_container_width=True)
     except Exception as exc:  # noqa: BLE001
-        st.error(f"Could not reach the API at {API_URL}: {exc}")
+        st.error(str(exc))
