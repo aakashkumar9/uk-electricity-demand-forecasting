@@ -1,0 +1,63 @@
+name: Scheduled Retrain
+
+on:
+  schedule:
+    # Every Monday 04:00 UTC - refreshes on the latest NESO + Open-Meteo data.
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      synthetic:
+        description: "Force synthetic data instead of live NESO/Open-Meteo fetch"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Run training pipeline (fetch data, backtest, refit, save artifacts)
+        run: |
+          SYNTHETIC_FLAG=""
+          if [ "${{ inputs.synthetic }}" = "true" ]; then
+            SYNTHETIC_FLAG="--synthetic"
+          fi
+          python -m edf.training.train --n-folds 4 --lstm-epochs 5 --lstm-stride 4 $SYNTHETIC_FLAG
+
+      - name: Run tests against freshly trained artifacts
+        run: pytest -v
+
+      - name: Commit updated artifacts
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add artifacts/
+          if git diff --cached --quiet; then
+            echo "No artifact changes to commit"
+          else
+            git commit -m "chore: scheduled retrain $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
+
+      - name: Upload backtest report as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backtest-report
+          path: artifacts/reports/
