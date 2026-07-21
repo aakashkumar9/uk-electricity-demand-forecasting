@@ -26,11 +26,13 @@ from edf.models.seasonal_naive import SeasonalNaiveForecaster
 logger = logging.getLogger(__name__)
 
 
-def get_model_factories(horizon: int, lookback: int, lstm_epochs: int, lstm_stride: int):
+def get_model_factories(horizon: int, lookback: int, lstm_epochs: int, lstm_stride: int, lstm_hidden: int):
     return {
         "seasonal_naive": lambda: SeasonalNaiveForecaster(),
         "lightgbm": lambda: LightGBMForecaster(),
-        "lstm": lambda: LSTMForecaster(lookback=lookback, horizon=horizon, epochs=lstm_epochs, stride=lstm_stride),
+        "lstm": lambda: LSTMForecaster(
+            lookback=lookback, horizon=horizon, epochs=lstm_epochs, stride=lstm_stride, hidden_size=lstm_hidden
+        ),
     }
 
 
@@ -43,8 +45,9 @@ def main() -> None:
     parser.add_argument("--lookback", type=int, default=settings.lookback_steps)
     parser.add_argument("--n-folds", type=int, default=settings.n_backtest_folds)
     parser.add_argument("--step-days", type=int, default=settings.backtest_step_days)
-    parser.add_argument("--lstm-epochs", type=int, default=8)
-    parser.add_argument("--lstm-stride", type=int, default=1)
+    parser.add_argument("--lstm-epochs", type=int, default=15)
+    parser.add_argument("--lstm-stride", type=int, default=4)
+    parser.add_argument("--lstm-hidden", type=int, default=48)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -61,7 +64,7 @@ def main() -> None:
     step = args.step_days * steps_per_day
     min_train_steps = args.lookback + args.horizon + steps_per_day * 30  # >= ~1 month warmup
 
-    factories = get_model_factories(args.horizon, args.lookback, args.lstm_epochs, args.lstm_stride)
+    factories = get_model_factories(args.horizon, args.lookback, args.lstm_epochs, args.lstm_stride, args.lstm_hidden)
     fold_metrics, last_forecasts, folds = run_backtest(
         features,
         factories,

@@ -17,6 +17,7 @@ permissions:
 jobs:
   retrain:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,7 +40,7 @@ jobs:
           if [ "${{ inputs.synthetic }}" = "true" ]; then
             SYNTHETIC_FLAG="--synthetic"
           fi
-          python -m edf.training.train --n-folds 4 --lstm-epochs 5 --lstm-stride 4 $SYNTHETIC_FLAG
+          python -m edf.training.train --n-folds 3 --lstm-epochs 12 --lstm-stride 16 --lstm-hidden 48 $SYNTHETIC_FLAG
 
       - name: Run tests against freshly trained artifacts
         run: pytest -v
