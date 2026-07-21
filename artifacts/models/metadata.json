@@ -1,0 +1,10 @@
+{
+  "trained_at": "2026-07-21T17:04:17Z",
+  "data_source": "synthetic",
+  "n_rows": 4320,
+  "horizon_steps": 48,
+  "lookback_steps": 336,
+  "n_backtest_folds": 3,
+  "best_model_by_mae": "lstm",
+  "training_seconds": 423.6
+}
