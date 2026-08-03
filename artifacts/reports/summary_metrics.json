@@ -1,12 +1,12 @@
 [
   {
     "model":"lstm",
-    "mae":1195.674,
-    "rmse":1514.066,
-    "mape":4.031,
-    "pinball_10":430.265,
-    "pinball_90":311.679,
-    "coverage_80":0.542
+    "mae":1333.875,
+    "rmse":1638.244,
+    "mape":4.59,
+    "pinball_10":438.472,
+    "pinball_90":400.606,
+    "coverage_80":0.354
   },
   {
     "model":"lightgbm",
