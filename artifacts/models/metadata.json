@@ -1,10 +1,10 @@
 {
-  "trained_at": "2026-08-24T05:00:01Z",
+  "trained_at": "2026-08-31T10:53:25Z",
   "data_source": "neso+open-meteo",
   "n_rows": 52561,
   "horizon_steps": 48,
   "lookback_steps": 336,
   "n_backtest_folds": 3,
-  "best_model_by_mae": "lstm",
-  "training_seconds": 442.4
+  "best_model_by_mae": "lightgbm",
+  "training_seconds": 549.0
 }
