@@ -1,5 +1,14 @@
 [
   {
+    "model":"lstm",
+    "mae":1440.073,
+    "rmse":1748.312,
+    "mape":5.027,
+    "pinball_10":594.857,
+    "pinball_90":266.525,
+    "coverage_80":0.382
+  },
+  {
     "model":"lightgbm",
     "mae":1463.467,
     "rmse":1863.618,
@@ -7,15 +16,6 @@
     "pinball_10":796.202,
     "pinball_90":423.124,
     "coverage_80":0.208
-  },
-  {
-    "model":"lstm",
-    "mae":1624.465,
-    "rmse":1966.854,
-    "mape":5.474,
-    "pinball_10":637.771,
-    "pinball_90":421.846,
-    "coverage_80":0.319
   },
   {
     "model":"seasonal_naive",
